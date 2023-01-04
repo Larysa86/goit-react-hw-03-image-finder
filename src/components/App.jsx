@@ -1,86 +1,121 @@
 import React, { Component } from 'react';
-import { Button, ImageGallery, Loader, Modal, Searchbar } from './index';
-import css from './App.module.css';
-import { fetchImages } from '../services/api-service';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
+import { ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
+import {
+  ImageGallery,
+  Searchbar,
+  Modal,
+  Loader,
+  Notification,
+  Button,
+} from './index';
+import { Container } from './App.styled';
+import { fetchImages } from 'api/pixabayAPI';
 
 export class App extends Component {
   state = {
-    search: '',
-    galleryItems: [],
-    modalImg: '',
+    images: [],
+    query: '',
+    totalImages: 0,
     page: 1,
-    status: 'start',
+    status: 'idle',
+    largeImage: '',
   };
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { search, page } = this.state;
-    try {
-      if (prevState.search !== search || prevState.page !== page) {
-        this.setState({ status: 'loading' });
-        const res = await fetchImages(search, page);
-        if (res.data.total === 0) {
-          throw new Error('Images with your querry was not found');
-        }
-        this.setState((prevState) => (
-          {
-            galleryItems: [...prevState.galleryItems, ...this.getGalleryItems(res.data.hits)],
-            status: 'loaded',
-          }
-        ));
-      }
-    } catch (error) {
-      toast.error(error.message, {
-        position: 'top-center',
-        autoClose: 2500,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: 'colored',
-      });
-      this.setState({ status: 'start' });
-
-    }
-  }
-
-  handleFormSubmit = (value) => {
+  handleFormSubmit = query => {
     this.setState({
-      search: value.search,
-      galleryItems: [],
+      query,
       page: 1,
     });
   };
 
-  loadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
-
-  handleModal = (image) => {
-    this.setState({ modalImg: image });
-  };
-
-  getGalleryItems = (data) => {
-    return data.map(el => ({
-      id: el.id, webformatURL: el.webformatURL, largeImageURL: el.largeImageURL,
+  onLoadMore = () => {
+    this.setState(prevState => ({
+      page: prevState.page + 1,
     }));
-
   };
+
+  onModal = largeImage => {
+    this.setState({ largeImage: largeImage });
+  };
+
+  onCloseModal = () => {
+    this.setState({ largeImage: '' });
+  };
+
+  async componentDidUpdate(_, prevState) {
+    const { query, page, images } = this.state;
+
+    if (prevState.query === query && prevState.page === page) {
+      return;
+    }
+    this.setState({ status: 'pending' });
+
+    try {
+      const data = await fetchImages(query, page);
+      if (page === 1 && data.hits.length > 0) {
+        toast.success(`We find ${data.totalHits} images`, {
+          autoClose: 1500,
+          theme: 'colored',
+        });
+      }
+
+      if (data.hits.length === 0) {
+        return this.setState({ status: 'empty', images: [] });
+      }
+
+      this.setState({
+        images: page === 1 ? data.hits : [...images, ...data.hits],
+        totalImages: data.totalHits,
+        status: 'resolved',
+      });
+    } catch (error) {
+      this.setState({ status: 'error' });
+      console.log(error.message);
+    }
+  }
 
   render() {
-    const { status, modalImg, galleryItems } = this.state;
-    return (<div className={css.App}>
-      <Searchbar onSubmit={this.handleFormSubmit} />
-      {galleryItems.length > 0 && <ImageGallery galleryItems={galleryItems} onClick={this.handleModal} />}
-      {status === 'loading' && <Loader />}
-      {status === 'loaded' && <Button loadMore={this.loadMore} />}
-      {modalImg && <Modal image={modalImg} onModalClose={this.handleModal} />}
-      <ToastContainer />
-    </div>);
+    const { images, totalImages, page, status, largeImage } = this.state;
+    const calcImages = totalImages - page * 12;
+
+    return (
+      <Container>
+        <Searchbar onSubmit={this.handleFormSubmit} />
+
+        <ImageGallery images={images} onModal={this.onModal} />
+
+        {status === 'pending' && totalImages === 0 && <Loader />}
+
+        {status === 'idle' && (
+          <Notification message="There is nothing here" status={status} />
+        )}
+
+        {status === 'empty' && (
+          <Notification
+            message="We didn't find anything, try to enter the correct query"
+            status={status}
+          />
+        )}
+
+        {status === 'error' && (
+          <Notification
+            message="Whoops, something went wrong, try again"
+            status={status}
+          />
+        )}
+
+        {calcImages > 0 && images.length > 0 && (
+          <Button onLoadMore={this.onLoadMore} status={status} />
+        )}
+
+        {largeImage && (
+          <Modal onClose={this.onCloseModal}>
+            <img src={largeImage} alt="IMG" />
+          </Modal>
+        )}
+        <ToastContainer />
+      </Container>
+    );
   }
 }
-
-

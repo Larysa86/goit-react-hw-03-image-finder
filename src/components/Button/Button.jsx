@@ -1,13 +1,18 @@
+import { Btn } from './Button.styled';
 import PropTypes from 'prop-types';
-import css from './Button.module.css';
+import { Loader } from 'components/Loader/Loader';
 
-export const Button = ({ loadMore }) => {
-  return (
-    <button className={css.button} type='button' onClick={loadMore}>Load more</button>
-  );
-};
+export const Button = ({ onLoadMore, status }) => (
+  <>
+    {status === 'pending' ? (
+      <Loader />
+    ) : (
+      <Btn onClick={onLoadMore}>Load more</Btn>
+    )}
+  </>
+);
 
 Button.propTypes = {
-  loadMore: PropTypes.func.isRequired,
+  onLoadMore: PropTypes.func.isRequired,
+  status: PropTypes.string.isRequired,
 };
-

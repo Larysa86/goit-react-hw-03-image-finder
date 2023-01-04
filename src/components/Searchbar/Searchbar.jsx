@@ -1,53 +1,67 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import { Formik } from 'formik';
-import { BsSearch } from 'react-icons/bs';
-import { Search, SearchForm, SearchFormBtn, Input } from './Searchbar.styled';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import React, { Component } from 'react';
+import {
+  Header,
+  SearchForm,
+  BtnSubmit,
+  InputForm,
+  ButtonIcon,
+} from './Searchbar.styled';
 
-export const Searchbar = ({ onSubmit }) => {
-
-  const handleSubmit = (values, actions) => {
-    onSubmit(values);
-    actions.resetForm();
+export class Searchbar extends Component {
+  static propTypes = {
+    onSubmit: PropTypes.func.isRequired,
   };
 
-  return (
-    <Search>
-      <Formik initialValues={{ search: '' }} onSubmit={handleSubmit}>
-        <SearchForm>
-          <SearchFormBtn type='submit'>
-            <BsSearch size='20px' />
-          </SearchFormBtn>
-          <Input
-            name='search'
-            className='input'
-            type='text'
-            autoComplete='off'
+  state = {
+    query: '',
+  };
+
+  handleQueryChange = event => {
+    this.setState({ query: event.currentTarget.value.toLowerCase() });
+  };
+
+  handleSubmit = e => {
+    e.preventDefault();
+    const normalizedQuery = this.state.query.trim();
+    if (normalizedQuery === '') {
+      return toast.info('Insert correct request', {
+        position: 'top-right',
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: 'light',
+      });
+    }
+
+    this.props.onSubmit(normalizedQuery);
+    this.setState({ query: '' });
+  };
+
+  render() {
+    return (
+      <Header>
+        <SearchForm onSubmit={this.handleSubmit}>
+          <BtnSubmit type="submit">
+            <ButtonIcon />
+          </BtnSubmit>
+
+          <InputForm
+            type="text"
+            name="query"
+            autoComplete="off"
+            value={this.state.query}
             autoFocus
-            placeholder='Search images and photos'
+            placeholder="Search images and photos"
+            onChange={this.handleQueryChange}
           />
         </SearchForm>
-      </Formik>
-    </Search>
-  );
-};
-
-Searchbar.propTypes = {
-  onSubmit: PropTypes.func.isRequired,
-};
-
-/* <header class="searchbar">
-  <form class="form">
-    <button type="submit" class="button">
-      <span class="button-label">Search</span>
-    </button>
-
-    <input
-      class="input"
-      type="text"
-      autocomplete="off"
-      autofocus
-      placeholder="Search images and photos"
-    />
-  </form>
-</header> */
+      </Header>
+    );
+  }
+}
